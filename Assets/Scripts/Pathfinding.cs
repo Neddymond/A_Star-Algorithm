@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Diagnostics; 
 
 namespace Assets.Scripts
 {
@@ -18,10 +19,17 @@ namespace Assets.Scripts
 
         void Update()
         {
-            FindPath(seeker.position, target.position);
+           
+            if (Input.GetButtonDown("Jump"))
+            {
+                FindPath(seeker.position, target.position);
+            }
+           
         }
         void FindPath(Vector3 startPos, Vector3 targetPos)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
             Node startNode = grid.NodeFromWorldPoint(startPos);
             Node targetNode = grid.NodeFromWorldPoint(targetPos);
 
@@ -46,6 +54,8 @@ namespace Assets.Scripts
 
                 if (currentNode == targetNode)
                 {
+                    sw.Stop();
+                    print("Path found: " + sw.ElapsedMilliseconds + " ms");
                     RetracePath(startNode, targetNode);
                     return;
                 }
