@@ -24,7 +24,7 @@ public class Node : IHeapItem<Node>
         gridY = _gridY;
     }
 	
-	public int fCost
+	public int fCost 
     {
         get
         {
@@ -36,11 +36,11 @@ public class Node : IHeapItem<Node>
     {
         get
         {
-            return HeapIndex;
+            return heapIndex;
         }
         set
         {
-            HeapIndex = value;
+            heapIndex = value;
         }
     }
 

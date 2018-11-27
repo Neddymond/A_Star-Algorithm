@@ -9,17 +9,26 @@ namespace Assets.Scripts
         public LayerMask unwalkableMask;
         public float nodeRadius;
         public Vector2 gridWorldSize;
+        public bool displayGridGizmos;
         Node[,] grid;
 
         float nodeDiameter;
         int gridSizeX, gridSizeY;
 
-        public void Start()
+        public void Awake()
         {
             nodeDiameter = nodeRadius * 2;
             gridSizeX = Mathf.RoundToInt(gridWorldSize.x / nodeDiameter);
             gridSizeY = Mathf.RoundToInt(gridWorldSize.y / nodeDiameter);
             CreateGrid();
+        }
+
+        public int MaxSize
+        {
+            get
+            {
+                return gridSizeX * gridSizeY;
+            }
         }
 
         void CreateGrid()
@@ -73,23 +82,21 @@ namespace Assets.Scripts
             return grid[x, y];
         }
 
-        public List<Node> path;
         void OnDrawGizmos()
         {
             Gizmos.DrawWireCube(transform.position, new Vector3(gridWorldSize.x, 1, gridWorldSize.y));
 
-            if (grid != null)
-            { 
-                foreach (Node n in grid)
+                if (grid != null && displayGridGizmos)
                 {
-                    Gizmos.color = (n.walkable) ? Color.white : Color.red;
-                    if (path != null)
-                        if (path.Contains(n))
-                            Gizmos.color = Color.black;        
-                    Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter - .1f));
-                    
+                    foreach (Node n in grid)
+                    {
+                        Gizmos.color = (n.walkable) ? Color.white : Color.red;
+                        Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter - .1f));
+                    }
                 }
-            }
+            
+
+            
         }
     }
 }
