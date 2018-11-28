@@ -7,7 +7,7 @@ namespace Assets.Scripts
     public class Unit : MonoBehaviour
     {
         public Transform target;
-        float speed = 15;
+        float speed = 20;
         Vector3[] path;
         int targetIndex;
 

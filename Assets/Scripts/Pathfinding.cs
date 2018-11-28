@@ -21,7 +21,7 @@ namespace Assets.Scripts
 
         public void StartFindPath(Vector3 startPos, Vector3 targetPos)
         {
-            StartCoroutine(FindPath(startPos, targetPos));           
+            StartCoroutine(FindPath(startPos, targetPos));            
         }
 
         IEnumerator FindPath(Vector3 startPos, Vector3 targetPos)
@@ -63,7 +63,7 @@ namespace Assets.Scripts
                             continue;
                         }
 
-                        int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
+                        int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour) + neighbour.movementPenalty;
                         if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
                         {
                             neighbour.gCost = newMovementCostToNeighbour;
@@ -72,6 +72,8 @@ namespace Assets.Scripts
 
                             if (!openSet.Contains(neighbour))
                                 openSet.Add(neighbour);
+                            else
+                                openSet.UpdateItem(neighbour);
                         }
 
                     }

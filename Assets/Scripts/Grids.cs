@@ -10,6 +10,10 @@ namespace Assets.Scripts
         public float nodeRadius;
         public Vector2 gridWorldSize;
         public bool displayGridGizmos;
+        public TerrainType[] walkableRegions;
+        LayerMask walkableMask;
+        Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>(); 
+
         Node[,] grid;
 
         float nodeDiameter;
@@ -20,6 +24,13 @@ namespace Assets.Scripts
             nodeDiameter = nodeRadius * 2;
             gridSizeX = Mathf.RoundToInt(gridWorldSize.x / nodeDiameter);
             gridSizeY = Mathf.RoundToInt(gridWorldSize.y / nodeDiameter);
+
+            foreach (TerrainType region in walkableRegions)
+            {
+                walkableMask.value += region.terrainMask.value;
+                walkableRegionsDictionary.Add((int)Mathf.Log(region.terrainMask.value, 2), region.terrainPenalty);
+            }
+
             CreateGrid();
         }
 
@@ -42,7 +53,20 @@ namespace Assets.Scripts
                 {
                     Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
                     bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius, unwalkableMask));
-                    grid[x, y] = new Node(walkable, worldPoint, x, y);
+
+                    int movementPenalty = 0;
+
+                    if (walkable)
+                    {
+                        Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
+                        RaycastHit hit;
+                        if (Physics.Raycast(ray, out hit, 100, walkableMask))
+                        {
+                            walkableRegionsDictionary.TryGetValue(hit.collider.gameObject.layer, out movementPenalty);
+                        }
+                    }
+
+                    grid[x, y] = new Node(walkable, worldPoint, x, y, movementPenalty);
                 }
             }
         }
@@ -86,17 +110,21 @@ namespace Assets.Scripts
         {
             Gizmos.DrawWireCube(transform.position, new Vector3(gridWorldSize.x, 1, gridWorldSize.y));
 
-                if (grid != null && displayGridGizmos)
+            if (grid != null && displayGridGizmos)
+            {
+                foreach (Node n in grid)
                 {
-                    foreach (Node n in grid)
-                    {
-                        Gizmos.color = (n.walkable) ? Color.white : Color.red;
-                        Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter - .1f));
-                    }
+                    Gizmos.color = (n.walkable) ? Color.white : Color.red;
+                    Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter - .1f));
                 }
-            
+            }
+        }
 
-            
+        [System.Serializable] 
+        public class TerrainType
+        {
+            public LayerMask terrainMask;
+            public int terrainPenalty;
         }
     }
 }
