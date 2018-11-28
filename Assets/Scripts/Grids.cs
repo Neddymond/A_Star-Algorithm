@@ -11,6 +11,7 @@ namespace Assets.Scripts
         public Vector2 gridWorldSize;
         public bool displayGridGizmos;
         public TerrainType[] walkableRegions;
+        public int obstacleProximityPenalty = 10;
         LayerMask walkableMask;
         Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>(); 
 
@@ -18,7 +19,9 @@ namespace Assets.Scripts
 
         float nodeDiameter;
         int gridSizeX, gridSizeY;
-
+        int penaltyMin = int.MaxValue;
+        int penaltyMax = int.MinValue;
+ 
         public void Awake()
         {
             nodeDiameter = nodeRadius * 2;
@@ -55,18 +58,82 @@ namespace Assets.Scripts
                     bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius, unwalkableMask));
 
                     int movementPenalty = 0;
-
-                    if (walkable)
-                    {
+                     
                         Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
                         RaycastHit hit;
                         if (Physics.Raycast(ray, out hit, 100, walkableMask))
                         {
                             walkableRegionsDictionary.TryGetValue(hit.collider.gameObject.layer, out movementPenalty);
                         }
+
+                    if (!walkable)
+                    {
+                        movementPenalty += obstacleProximityPenalty;
                     }
+                    
 
                     grid[x, y] = new Node(walkable, worldPoint, x, y, movementPenalty);
+                }
+            }
+
+            BlurPenaltyMap(3);
+        }
+
+
+        void BlurPenaltyMap(int blurSize)
+        {
+            int kernelSize = blurSize * 2 + 1;
+            int kernelExtents = (kernelSize - 1) / 2;
+
+            int[,] penaltiesHorinzontalPass = new int[gridSizeX, gridSizeY];
+            int[,] penaltiesVerticalPass = new int[gridSizeX, gridSizeY];
+
+            for (int y = 0; y < gridSizeY; y++)
+            {
+                for (int x = -kernelExtents; x <= kernelExtents; x++)
+                {
+                    int sampleX = Mathf.Clamp(x, 0, kernelExtents);
+                    penaltiesHorinzontalPass[0, y] += grid[sampleX, y].movementPenalty;
+                }
+
+                for (int x = 1; x < gridSizeX; x++)
+                {
+                    int removeIndex = Mathf.Clamp(x - kernelExtents - 1, 0, gridSizeX);
+                    int addIndex = Mathf.Clamp(x + kernelExtents, 0, gridSizeX - 1);
+
+                    penaltiesHorinzontalPass[x, y] = penaltiesHorinzontalPass[x - 1, y] - grid[removeIndex, y].movementPenalty + grid[addIndex, y].movementPenalty;
+                }
+            }
+
+            for (int x = 0; x < gridSizeX; x++)
+            {
+                for (int y = -kernelExtents; y <= kernelExtents; y++)
+                {
+                    int sampleY = Mathf.Clamp(y, 0, kernelExtents);
+                    penaltiesVerticalPass[x, 0] += penaltiesHorinzontalPass[x, sampleY];
+                }
+
+                int blurredPenalty = Mathf.RoundToInt((float)penaltiesVerticalPass[x, 0] / (kernelSize * kernelSize));
+                grid[x, 0].movementPenalty = blurredPenalty;
+
+
+                for (int y = 1; y < gridSizeY; y++)
+                {
+                    int removeIndex = Mathf.Clamp(y - kernelExtents - 1, 0, gridSizeY);
+                    int addIndex = Mathf.Clamp(y + kernelExtents, 0, gridSizeY - 1);
+
+                    penaltiesVerticalPass[x, y] = penaltiesVerticalPass[x, y - 1] - penaltiesHorinzontalPass[x, removeIndex] + penaltiesHorinzontalPass[x, addIndex];
+                    blurredPenalty = Mathf.RoundToInt((float)penaltiesVerticalPass[x, y] / (kernelSize * kernelSize));
+                    grid[x, y].movementPenalty = blurredPenalty;
+
+                    if (blurredPenalty > penaltyMax)
+                    {
+                        penaltyMax = blurredPenalty;
+                    }
+                    if (blurredPenalty < penaltyMin)
+                    {
+                        penaltyMin = blurredPenalty;
+                    }
                 }
             }
         }
@@ -114,8 +181,10 @@ namespace Assets.Scripts
             {
                 foreach (Node n in grid)
                 {
-                    Gizmos.color = (n.walkable) ? Color.white : Color.red;
-                    Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter - .1f));
+
+                    Gizmos.color = Color.Lerp(Color.white, Color.black, Mathf.InverseLerp(penaltyMin, penaltyMax, n.movementPenalty));
+                    Gizmos.color = (n.walkable) ? Gizmos.color : Color.red;
+                    Gizmos.DrawCube(n.worldPostion, Vector3.one * (nodeDiameter));
                 }
             }
         }
