@@ -9,8 +9,9 @@ namespace Assets.Scripts
         public readonly Vector3[] lookPoints;
         public readonly Line[] turnBoundaries;
         public readonly int finishLineIndex;
+        public readonly int slowDownIndex;
 
-        public Path(Vector3[] waypoints, Vector3 startPos, float turnDist)
+        public Path(Vector3[] waypoints, Vector3 startPos, float turnDist, float stoppingDst)
         {
             lookPoints = waypoints;
             turnBoundaries = new Line[lookPoints.Length];
@@ -25,6 +26,17 @@ namespace Assets.Scripts
                 Vector2 turnBoundaryPoint = (i == finishLineIndex) ? currentPoint : currentPoint - dirToCurrenPoint * turnDist;
                 turnBoundaries[i] = new Line(turnBoundaryPoint, previousPoint - dirToCurrenPoint * turnDist);
                 previousPoint = turnBoundaryPoint;
+            }
+
+            float dstFromEndPoint = 0;
+            for (int i = lookPoints.Length - 1; i > 0; i--)
+            {
+                dstFromEndPoint += Vector3.Distance(lookPoints[i], lookPoints[i - 1]);
+                if (dstFromEndPoint > stoppingDst)
+                {
+                    slowDownIndex = i;
+                    break;
+                }
             }
         }
 
